@@ -631,7 +631,7 @@ func (s *DefaultStrategy) generateFrontChannelLogoutURLs(r *http.Request, subjec
 }
 
 func (s *DefaultStrategy) executeBackChannelLogout(r *http.Request, subject, sid string) error {
-	var ctx context.Context := r.Context
+	ctx := r.Context()
 
 	clients, err := s.r.ConsentManager().ListUserAuthenticatedClientsWithBackChannelLogout(ctx, subject)
 	if err != nil {
