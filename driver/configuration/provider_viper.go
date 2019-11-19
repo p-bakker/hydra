@@ -364,7 +364,11 @@ func (v *ViperProvider) IssuerURL(requestUrl ...url.URL) *url.URL {
 	var issuerUrl *url.URL = urlRoot(urlx.ParseOrFatal(v.l, strings.TrimRight(viperx.GetString(v.l, ViperKeyIssuerURL, v.fallbackURL("/", v.publicHost(), v.publicPort()), "OAUTH2_ISSUER_URL", "ISSUER", "ISSUER_URL"), "/")+"/"))
 
 	if len(requestUrl) == 1 && len(strings.Split(issuerUrl.String(), "*")) == 1 {
-		issuerUrl = "https://uat.paragon-erp.com"
+		hackUrl, err := url.Parse("https://uat.paragon-erp.com")
+
+		if err == nil {
+			issuerUrl = hackUrl
+		}
 	}
 
 	return issuerUrl
