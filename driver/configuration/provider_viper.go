@@ -320,7 +320,7 @@ func (v *ViperProvider) adminFallbackURL(path string) string {
 }
 
 func (v *ViperProvider) publicFallbackURL(path string) string {
-	if len(v.IssuerURL().String()) > 0 {
+	if len(v.IssuerURL().String()) > 0 { // what to do
 		return urlx.AppendPaths(v.IssuerURL(), path).String()
 	}
 
@@ -360,8 +360,14 @@ func (v *ViperProvider) PublicURL() *url.URL {
 	return urlRoot(urlx.ParseOrFatal(v.l, viperx.GetString(v.l, ViperKeyPublicURL, v.publicFallbackURL("/"))))
 }
 
-func (v *ViperProvider) IssuerURL() *url.URL {
-	return urlRoot(urlx.ParseOrFatal(v.l, strings.TrimRight(viperx.GetString(v.l, ViperKeyIssuerURL, v.fallbackURL("/", v.publicHost(), v.publicPort()), "OAUTH2_ISSUER_URL", "ISSUER", "ISSUER_URL"), "/")+"/"))
+func (v *ViperProvider) IssuerURL(requestUrl ...url.URL) *url.URL {
+	var issuerUrl *url.URL = urlRoot(urlx.ParseOrFatal(v.l, strings.TrimRight(viperx.GetString(v.l, ViperKeyIssuerURL, v.fallbackURL("/", v.publicHost(), v.publicPort()), "OAUTH2_ISSUER_URL", "ISSUER", "ISSUER_URL"), "/")+"/"))
+
+	if len(requestUrl) == 1 && len(strings.Split(issuerUrl.String(), "*")) == 1 {
+		issuerUrl = "https://uat.paragon-erp.com"
+	}
+
+	return issuerUrl
 }
 
 func (v *ViperProvider) OAuth2AuthURL() string {

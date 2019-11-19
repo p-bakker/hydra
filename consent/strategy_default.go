@@ -218,7 +218,7 @@ func (s *DefaultStrategy) forwardAuthenticationRequest(w http.ResponseWriter, r 
 	csrf := strings.Replace(uuid.New(), "-", "", -1)
 
 	// Generate the request URL
-	iu := urlx.AppendPaths(s.c.IssuerURL(), s.c.OAuth2AuthURL())
+	iu := urlx.AppendPaths(s.c.IssuerURL(r.URL), s.c.OAuth2AuthURL())
 	iu.RawQuery = r.URL.RawQuery
 
 	var idTokenHintClaims jwtgo.MapClaims
@@ -608,8 +608,8 @@ func (s *DefaultStrategy) verifyConsent(w http.ResponseWriter, r *http.Request, 
 	return session, nil
 }
 
-func (s *DefaultStrategy) generateFrontChannelLogoutURLs(ctx context.Context, subject, sid string) ([]string, error) {
-	clients, err := s.r.ConsentManager().ListUserAuthenticatedClientsWithFrontChannelLogout(ctx, subject)
+func (s *DefaultStrategy) generateFrontChannelLogoutURLs(r *http.Request, subject, sid string) ([]string, error) {
+	clients, err := s.r.ConsentManager().ListUserAuthenticatedClientsWithFrontChannelLogout(r.Context(), subject)
 	if err != nil {
 		return nil, err
 	}
@@ -622,7 +622,7 @@ func (s *DefaultStrategy) generateFrontChannelLogoutURLs(ctx context.Context, su
 		}
 
 		urls = append(urls, urlx.SetQuery(u, url.Values{
-			"iss": {s.c.IssuerURL().String()},
+			"iss": {s.c.IssuerURL(r.URL).String()},
 			"sid": {sid},
 		}).String())
 	}
@@ -630,7 +630,9 @@ func (s *DefaultStrategy) generateFrontChannelLogoutURLs(ctx context.Context, su
 	return urls, nil
 }
 
-func (s *DefaultStrategy) executeBackChannelLogout(ctx context.Context, subject, sid string) error {
+func (s *DefaultStrategy) executeBackChannelLogout(r *http.Request, subject, sid string) error {
+	var ctx context.Context := r.Context
+
 	clients, err := s.r.ConsentManager().ListUserAuthenticatedClientsWithBackChannelLogout(ctx, subject)
 	if err != nil {
 		return err
@@ -657,7 +659,7 @@ func (s *DefaultStrategy) executeBackChannelLogout(ctx context.Context, subject,
 		// sub := s.obfuscateSubjectIdentifier(c, subject, )
 
 		t, _, err := s.r.OpenIDJWTStrategy().Generate(ctx, jwtgo.MapClaims{
-			"iss":    s.c.IssuerURL().String(),
+			"iss":    s.c.IssuerURL(r.URL).String(),
 			"aud":    []string{c.ClientID},
 			"iat":    time.Now().UTC().Unix(),
 			"jti":    uuid.New(),
@@ -776,13 +778,13 @@ func (s *DefaultStrategy) issueLogoutVerifier(w http.ResponseWriter, r *http.Req
 	}
 
 	mksi := mapx.KeyStringToInterface(claims)
-	if !claims.VerifyIssuer(s.c.IssuerURL().String(), true) {
+	if !claims.VerifyIssuer(s.c.IssuerURL(r.URL).String(), true) {
 		return nil, errors.WithStack(fosite.ErrInvalidRequest.
 			WithHint(
 				fmt.Sprintf(
 					`Logout failed because issuer claim value "%s" from query parameter id_token_hint does not match with issuer value from configuration "%s"`,
 					mapx.GetStringDefault(mksi, "iss", ""),
-					s.c.IssuerURL().String(),
+					s.c.IssuerURL(r.URL).String(),
 				),
 			),
 		)
@@ -924,11 +926,11 @@ func (s *DefaultStrategy) completeLogout(w http.ResponseWriter, r *http.Request)
 		return nil, err
 	}
 
-	if err := s.executeBackChannelLogout(r.Context(), lr.Subject, lr.SessionID); err != nil {
+	if err := s.executeBackChannelLogout(r, lr.Subject, lr.SessionID); err != nil {
 		return nil, err
 	}
 
-	urls, err := s.generateFrontChannelLogoutURLs(r.Context(), lr.Subject, lr.SessionID)
+	urls, err := s.generateFrontChannelLogoutURLs(r, lr.Subject, lr.SessionID)
 	if err != nil {
 		return nil, err
 	}

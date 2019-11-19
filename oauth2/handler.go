@@ -219,11 +219,11 @@ func (h *Handler) LogoutHandler(w http.ResponseWriter, r *http.Request, ps httpr
 //       500: genericError
 func (h *Handler) WellKnownHandler(w http.ResponseWriter, r *http.Request) {
 	h.r.Writer().Write(w, r, &WellKnown{
-		Issuer:                             strings.TrimRight(h.c.IssuerURL().String(), "/") + "/",
-		AuthURL:                            urlx.AppendPaths(h.c.IssuerURL(), AuthPath).String(),
-		TokenURL:                           urlx.AppendPaths(h.c.IssuerURL(), TokenPath).String(),
-		JWKsURI:                            urlx.AppendPaths(h.c.IssuerURL(), JWKPath).String(),
-		RevocationEndpoint:                 urlx.AppendPaths(h.c.IssuerURL(), RevocationPath).String(),
+		Issuer:                             strings.TrimRight(h.c.IssuerURL(r.URL).String(), "/") + "/",
+		AuthURL:                            urlx.AppendPaths(h.c.IssuerURL(r.URL), AuthPath).String(),
+		TokenURL:                           urlx.AppendPaths(h.c.IssuerURL(r.URL), TokenPath).String(),
+		JWKsURI:                            urlx.AppendPaths(h.c.IssuerURL(r.URL), JWKPath).String(),
+		RevocationEndpoint:                 urlx.AppendPaths(h.c.IssuerURL(r.URL), RevocationPath).String(),
 		RegistrationEndpoint:               h.c.OAuth2ClientRegistrationURL().String(),
 		SubjectTypes:                       h.c.SubjectTypesSupported(),
 		ResponseTypes:                      []string{"code", "code id_token", "id_token", "token id_token", "token", "token id_token code"},
@@ -242,7 +242,7 @@ func (h *Handler) WellKnownHandler(w http.ResponseWriter, r *http.Request) {
 		BackChannelLogoutSessionSupported:  true,
 		FrontChannelLogoutSupported:        true,
 		FrontChannelLogoutSessionSupported: true,
-		EndSessionEndpoint:                 urlx.AppendPaths(h.c.IssuerURL(), LogoutPath).String(),
+		EndSessionEndpoint:                 urlx.AppendPaths(h.c.IssuerURL(r.URL), LogoutPath).String(),
 	})
 }
 
@@ -467,7 +467,7 @@ func (h *Handler) IntrospectHandler(w http.ResponseWriter, r *http.Request, _ ht
 		Username:          session.GetUsername(),
 		Extra:             session.Extra,
 		Audience:          resp.GetAccessRequester().GetGrantedAudience(),
-		Issuer:            strings.TrimRight(h.c.IssuerURL().String(), "/") + "/",
+		Issuer:            strings.TrimRight(h.c.IssuerURL(r.URL).String(), "/") + "/",
 		ObfuscatedSubject: obfuscated,
 		TokenType:         string(resp.GetTokenType()),
 	}); err != nil {
@@ -566,7 +566,7 @@ func (h *Handler) TokenHandler(w http.ResponseWriter, r *http.Request) {
 		session.Subject = accessRequest.GetClient().GetID()
 		session.ClientID = accessRequest.GetClient().GetID()
 		session.KID = accessTokenKeyID
-		session.DefaultSession.Claims.Issuer = strings.TrimRight(h.c.IssuerURL().String(), "/") + "/"
+		session.DefaultSession.Claims.Issuer = strings.TrimRight(h.c.IssuerURL(r.URL).String(), "/") + "/"
 		session.DefaultSession.Claims.IssuedAt = time.Now().UTC()
 
 		for _, scope := range accessRequest.GetRequestedScopes() {
@@ -659,7 +659,7 @@ func (h *Handler) AuthHandler(w http.ResponseWriter, r *http.Request, _ httprout
 
 	claims := &jwt.IDTokenClaims{
 		Subject:                             session.ConsentRequest.SubjectIdentifier,
-		Issuer:                              strings.TrimRight(h.c.IssuerURL().String(), "/") + "/",
+		Issuer:                              strings.TrimRight(h.c.IssuerURL(r.URL).String(), "/") + "/",
 		IssuedAt:                            time.Now().UTC(),
 		AuthTime:                            session.AuthenticatedAt,
 		RequestedAt:                         session.RequestedAt,
